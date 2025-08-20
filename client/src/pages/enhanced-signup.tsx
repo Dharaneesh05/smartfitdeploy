@@ -40,11 +40,12 @@ export default function EnhancedSignupPage() {
 
   const signupMutation = useMutation({
     mutationFn: async (data: InsertUser) => {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/auth/signup`, {
+      const response = await fetch('https://smartfitdeploy.onrender.com/api/auth/signup', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(data),
 });
+
 
 
       if (!response.ok) {
@@ -57,7 +58,7 @@ export default function EnhancedSignupPage() {
     onSuccess: (data) => {
       login(data.user, data.token);
       toast({
-        title: "Welcome to FitPredict!",
+        title: "Welcome to SmartFit!",
         description: "Account created successfully. Explore your new dashboard.",
       });
       setLocation('/profile');
