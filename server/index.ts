@@ -11,13 +11,13 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const start = Date.now();
   const path = req.path;
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
   const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
+  res.json = function (bodyJson: any, ...args: any[]) {
     capturedJsonResponse = bodyJson;
     return originalResJson.apply(res, [bodyJson, ...args]);
   };
@@ -61,25 +61,19 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
+  // Setup Vite in development, serve static files in production
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
+  // Serve on the port specified by Render or default to 5000
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
-    host: "0.0.0.0", // listen on all interfaces
+    host: "0.0.0.0", // Listen on all interfaces for Render
   }, () => {
-    log(`serving on http://localhost:${port}`);
+    log(`Server running on port ${port}`);
   });
-
 })();
