@@ -5,7 +5,7 @@ import { insertUserSchema, loginSchema, measurementSchema, productSchema, type U
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // Replace with secure env var in Render
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // Fallback for local dev, overridden by Render
 
 // Middleware to verify JWT token
 const authenticateToken = async (req: Request, res: Response, next: any) => {
