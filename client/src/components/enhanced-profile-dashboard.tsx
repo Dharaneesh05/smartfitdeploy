@@ -11,7 +11,6 @@ import {
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
@@ -43,11 +42,30 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 
-interface UserHistory {
+// Define interfaces based on API responses and component usage
+interface Measurement {
+  chest?: number;
+  shoulders?: number;
+  waist?: number;
+  height?: number;
+  hips?: number;
+}
+
+interface Favorite {
   id: string;
-  action: string;
-  details: string | null;
-  createdAt: string;
+  productId: string;
+  product?: {
+    name?: string;
+    brand?: string;
+    imageUrl?: string;
+  };
+}
+
+interface FitAnalysis {
+  id: string;
+  fitStatus: string;
+  recommendations?: string;
+  createdAt?: string;
 }
 
 interface Recommendation {
@@ -59,6 +77,13 @@ interface Recommendation {
   createdAt: string;
 }
 
+interface UserHistory {
+  id: string;
+  action: string;
+  details: string | null;
+  createdAt: string;
+}
+
 export default function EnhancedProfileDashboard() {
   const { user, logout } = useAuth();
   const [location, setLocation] = useLocation();
@@ -66,18 +91,18 @@ export default function EnhancedProfileDashboard() {
   const [activeTab, setActiveTab] = useState('measurements');
   const queryClient = useQueryClient();
 
-  // Fetch all data
-  const { data: measurements } = useQuery({
+  // Fetch data with typed responses
+  const { data: measurements } = useQuery<Measurement>({
     queryKey: ['/api/measurements'],
     enabled: !!user,
   });
 
-  const { data: favorites = [] } = useQuery({
+  const { data: favorites = [] } = useQuery<Favorite[]>({
     queryKey: ['/api/favorites'],
     enabled: !!user,
   });
 
-  const { data: fitAnalyses = [] } = useQuery({
+  const { data: fitAnalyses = [] } = useQuery<FitAnalysis[]>({
     queryKey: ['/api/fit-analyses'],
     enabled: !!user,
   });
@@ -101,26 +126,11 @@ export default function EnhancedProfileDashboard() {
 
   const generateSampleHistory = async () => {
     const sampleHistory = [
-      {
-        action: "Measured body",
-        details: "Captured measurements using real-time camera",
-      },
-      {
-        action: "Predicted fit for Classic Shirt",
-        details: "Fit result: Perfect match (95% confidence)",
-      },
-      {
-        action: "Added product to favorites",
-        details: "Calvin Klein Cotton Shirt",
-      },
-      {
-        action: "Viewed AR for Athletic Polo",
-        details: "AR try-on session: 2 minutes",
-      },
-      {
-        action: "Updated profile measurements",
-        details: "Chest measurement updated to 104.8cm",
-      },
+      { action: "Measured body", details: "Captured measurements using real-time camera" },
+      { action: "Predicted fit for Classic Shirt", details: "Fit result: Perfect match (95% confidence)" },
+      { action: "Added product to favorites", details: "Calvin Klein Cotton Shirt" },
+      { action: "Viewed AR for Athletic Polo", details: "AR try-on session: 2 minutes" },
+      { action: "Updated profile measurements", details: "Chest measurement updated to 104.8cm" },
     ];
 
     for (const historyItem of sampleHistory) {
@@ -156,9 +166,7 @@ export default function EnhancedProfileDashboard() {
       historyCount: history.length,
     };
 
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json',
-    });
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -358,18 +366,18 @@ export default function EnhancedProfileDashboard() {
                   <CardContent>
                     {favorites.length > 0 ? (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {favorites.map((favorite: any) => (
+                        {favorites.map((favorite) => (
                           <Card key={favorite.id} className="hover:shadow-md transition-shadow">
                             <CardContent className="p-4">
                               <div className="flex items-center space-x-4">
                                 <img
                                   src={favorite.product?.imageUrl || '/api/placeholder/80/80'}
-                                  alt={favorite.product?.name}
+                                  alt={favorite.product?.name || 'Product Image'}
                                   className="w-16 h-16 object-cover rounded-lg"
                                 />
                                 <div className="flex-1">
-                                  <h4 className="font-semibold">{favorite.product?.name}</h4>
-                                  <p className="text-sm text-gray-600">{favorite.product?.brand}</p>
+                                  <h4 className="font-semibold">{favorite.product?.name || 'Unnamed Product'}</h4>
+                                  <p className="text-sm text-gray-600">{favorite.product?.brand || 'Unknown Brand'}</p>
                                   <div className="flex space-x-2 mt-2">
                                     <Button variant="outline" size="sm" onClick={() => setLocation(`/ar-tryon?product=${favorite.productId}`)}>
                                       <Eye className="w-4 h-4 mr-1" />
@@ -403,9 +411,9 @@ export default function EnhancedProfileDashboard() {
                     <CardTitle>Fit Analysis History</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {(fitAnalyses as any[]).length > 0 ? (
+                    {fitAnalyses.length > 0 ? (
                       <div className="space-y-4">
-                        {(fitAnalyses as any[]).map((analysis: any) => (
+                        {fitAnalyses.map((analysis) => (
                           <Card key={analysis.id} className="border-l-4 border-l-primary">
                             <CardContent className="p-4">
                               <div className="flex justify-between items-start mb-2">
@@ -419,7 +427,7 @@ export default function EnhancedProfileDashboard() {
                               </p>
                               <div className="flex justify-between items-center">
                                 <span className="text-xs text-gray-500">
-                                  {new Date(analysis.createdAt).toLocaleDateString()}
+                                  {analysis.createdAt ? new Date(analysis.createdAt).toLocaleDateString() : 'N/A'}
                                 </span>
                                 <Button variant="outline" size="sm">
                                   <RefreshCw className="w-4 h-4 mr-1" />
@@ -595,9 +603,6 @@ export default function EnhancedProfileDashboard() {
 
             {/* Delete Account Section */}
             <Card className="mt-8 border-red-200">
-              {/* <CardHeader>
-                <CardTitle className="text-red-600">Danger Zone</CardTitle>
-              </CardHeader> */}
               <CardContent>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
