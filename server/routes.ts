@@ -5,7 +5,7 @@ import { insertUserSchema, loginSchema, measurementSchema, productSchema, type U
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // Replace with secure env var in Render
 
 // Middleware to verify JWT token
 const authenticateToken = async (req: Request, res: Response, next: any) => {
@@ -26,30 +26,26 @@ const authenticateToken = async (req: Request, res: Response, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use(express.json()); // Ensure JSON parsing middleware
+
   // Authentication routes
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
       console.log('Received signup data:', req.body);
       const userData = insertUserSchema.parse(req.body);
       console.log('Parsed user data:', userData);
-      console.log('User data before saving:', userData);
       
-      // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
         return res.status(400).json({ message: 'User already exists' });
       }
 
-      // Hash password
       const hashedPassword = await bcrypt.hash(userData.password, 10);
-      
-      // Create user
       const user = await storage.createUser({
         ...userData,
         password: hashedPassword
       });
 
-      // Generate JWT token
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
       res.json({
@@ -65,19 +61,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const loginData = loginSchema.parse(req.body);
       
-      // Find user
       const user = await storage.getUserByEmail(loginData.email);
       if (!user) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Verify password
       const validPassword = await bcrypt.compare(loginData.password, user.password);
       if (!validPassword) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Generate JWT token
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
       res.json({
@@ -162,7 +155,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Product or measurements not found' });
       }
 
-      // Simple fit prediction algorithm (±2cm tolerance)
       const predictions: any = {};
       let overallFit = 'perfect';
       const recommendations: string[] = [];
@@ -318,6 +310,5 @@ declare global {
   namespace Express {
     interface Request {
       userId?: string;
-    }
   }
 }
