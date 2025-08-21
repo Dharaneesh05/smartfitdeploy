@@ -4,17 +4,15 @@ import { storage } from "./storage";
 import { insertUserSchema, loginSchema, measurementSchema, productSchema, type User } from "@shared/schema";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import express from "express"; // Added
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // Fallback for local dev, overridden by Render
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
-// Middleware to verify JWT token
 const authenticateToken = async (req: Request, res: Response, next: any) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ message: 'Access token required' });
-  }
+  if (!token) return res.status(401).json({ message: 'Access token required' });
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
@@ -26,32 +24,19 @@ const authenticateToken = async (req: Request, res: Response, next: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.use(express.json()); // Ensure JSON parsing middleware
+  app.use(express.json());
 
-  // Authentication routes
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
-      console.log('Received signup data:', req.body);
       const userData = insertUserSchema.parse(req.body);
-      console.log('Parsed user data:', userData);
-      
       const existingUser = await storage.getUserByEmail(userData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: 'User already exists' });
-      }
+      if (existingUser) return res.status(400).json({ message: 'User already exists' });
 
       const hashedPassword = await bcrypt.hash(userData.password, 10);
-      const user = await storage.createUser({
-        ...userData,
-        password: hashedPassword
-      });
-
+      const user = await storage.createUser({ ...userData, password: hashedPassword });
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
-      res.json({
-        user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName },
-        token
-      });
+      res.json({ user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName }, token });
     } catch (error) {
       res.status(400).json({ message: 'Invalid user data' });
     }
@@ -60,23 +45,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
       const loginData = loginSchema.parse(req.body);
-      
       const user = await storage.getUserByEmail(loginData.email);
-      if (!user) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
       const validPassword = await bcrypt.compare(loginData.password, user.password);
-      if (!validPassword) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
+      if (!validPassword) return res.status(401).json({ message: 'Invalid credentials' });
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-
-      res.json({
-        user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName },
-        token
-      });
+      res.json({ user: { id: user.id, username: user.username, email: user.email, fullName: user.fullName }, token });
     } catch (error) {
       res.status(400).json({ message: 'Invalid login data' });
     }
@@ -85,22 +61,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", authenticateToken, async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.userId!);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-
-      res.json({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        fullName: user.fullName
-      });
+      if (!user) return res.status(404).json({ message: 'User not found' });
+      res.json({ id: user.id, username: user.username, email: user.email, fullName: user.fullName });
     } catch (error) {
       res.status(500).json({ message: 'Server error' });
     }
   });
 
-  // Measurements routes
   app.get("/api/measurements", authenticateToken, async (req: Request, res: Response) => {
     try {
       const measurement = await storage.getMeasurement(req.userId!);
@@ -120,7 +87,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Products routes
   app.post("/api/products", authenticateToken, async (req: Request, res: Response) => {
     try {
       const productData = productSchema.parse(req.body);
@@ -134,26 +100,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/products/:id", authenticateToken, async (req: Request, res: Response) => {
     try {
       const product = await storage.getProduct(req.params.id);
-      if (!product) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
+      if (!product) return res.status(404).json({ message: 'Product not found' });
       res.json(product);
     } catch (error) {
       res.status(500).json({ message: 'Server error' });
     }
   });
 
-  // Fit prediction route
   app.post("/api/fit-predict", authenticateToken, async (req: Request, res: Response) => {
     try {
       const { productId } = req.body;
-      
       const product = await storage.getProduct(productId);
       const measurement = await storage.getMeasurement(req.userId!);
-      
-      if (!product || !measurement) {
-        return res.status(400).json({ message: 'Product or measurements not found' });
-      }
+
+      if (!product || !measurement) return res.status(400).json({ message: 'Product or measurements not found' });
 
       const predictions: any = {};
       let overallFit = 'perfect';
@@ -173,7 +133,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             predictions.chest = 'perfect';
           }
         }
-
         if (measurement.shoulders && product.measurements.shoulders) {
           const diff = Math.abs(measurement.shoulders - product.measurements.shoulders);
           if (diff > 3) {
@@ -206,7 +165,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Favorites routes
   app.post("/api/favorites", authenticateToken, async (req: Request, res: Response) => {
     try {
       const { productId } = req.body;
@@ -244,7 +202,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Recommendations routes
   app.get("/api/recommendations", authenticateToken, async (req: Request, res: Response) => {
     try {
       const recommendations = await storage.getUserRecommendations(req.userId!);
@@ -263,7 +220,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // History routes
   app.get("/api/history", authenticateToken, async (req: Request, res: Response) => {
     try {
       const history = await storage.getUserHistory(req.userId!);
@@ -282,7 +238,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Notifications routes
   app.get("/api/notifications", authenticateToken, async (req: Request, res: Response) => {
     try {
       const notifications = await storage.getUserNotifications(req.userId!);
@@ -305,7 +260,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-// Extend Request type to include userId
 declare global {
   namespace Express {
     interface Request {
