@@ -42,7 +42,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 (async () => {
-  // Initialize MongoDB connection with environment variable
   try {
     await (storage as any).connect(process.env.MONGODB_URI);
     log('MongoDB storage initialized successfully');
@@ -56,22 +55,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
   });
 
-  // Setup Vite in development, serve static files in production
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Serve on the port specified by Render or default to 5000
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
-    host: "0.0.0.0", // Listen on all interfaces for Render
+    host: "0.0.0.0",
   }, () => {
     log(`Server running on port ${port}`);
   });
