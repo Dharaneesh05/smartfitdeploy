@@ -19,7 +19,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   const originalResJson = res.json;
   res.json = function (bodyJson: any, ...args: any[]) {
     capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
+    return originalResJson.call(res, bodyJson, ...args);
   };
 
   res.on("finish", () => {
@@ -56,9 +56,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
-    res.status(status).json({ message });
-    throw err;
+    res.status(status).json({ message }); // Fixed to single argument
   });
 
   // Setup Vite in development, serve static files in production
