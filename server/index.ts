@@ -42,9 +42,9 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 (async () => {
-  // Initialize MongoDB connection
+  // Initialize MongoDB connection with environment variable
   try {
-    await (storage as any).connect();
+    await (storage as any).connect(process.env.MONGODB_URI);
     log('MongoDB storage initialized successfully');
   } catch (error) {
     log(`Failed to initialize MongoDB storage: ${error}`);
@@ -62,7 +62,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   });
 
   // Setup Vite in development, serve static files in production
-  if (app.get("env") === "development") {
+  if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
