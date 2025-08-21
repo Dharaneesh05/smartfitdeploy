@@ -41,19 +41,23 @@ export default function EnhancedSignupPage() {
   const signupMutation = useMutation({
     mutationFn: async (data: InsertUser) => {
       const response = await fetch('https://smartfitdeploy.onrender.com/api/auth/signup', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(data),
-});
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
 
-
-
+      const responseText = await response.text(); // Read response as text first
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Signup failed');
+        try {
+          const error = responseText ? JSON.parse(responseText) : { message: 'Server error' };
+          throw new Error(error.message || 'Signup failed');
+        } catch (parseError) {
+          throw new Error('Invalid server response');
+        }
       }
 
-      return response.json();
+      // Parse JSON only if response is OK
+      return responseText ? JSON.parse(responseText) : {};
     },
     onSuccess: (data) => {
       login(data.user, data.token);
@@ -65,7 +69,7 @@ export default function EnhancedSignupPage() {
     },
     onError: (error: Error) => {
       toast({
-        title: "Signup Failed", 
+        title: "Signup Failed",
         description: error.message,
         variant: "destructive",
       });
